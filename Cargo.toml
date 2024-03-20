@@ -11,4 +11,4 @@ description = "Assists in converting the callback function's method of obtaining
 
 [dependencies]
 notify-future = "0.1.1"
-async-std = "*"
+async-std = "1.12.0"
