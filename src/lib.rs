@@ -19,7 +19,7 @@ pub struct CallbackWaiter<K, R> {
     state: Mutex<CallbackWaiterState<K, R>>,
 }
 
-impl <K: Hash + Eq + Clone, R: Clone> CallbackWaiter<K, R> {
+impl <K: Hash + Eq + Clone, R> CallbackWaiter<K, R> {
     pub fn new() -> Self {
         Self {
             state: Mutex::new(CallbackWaiterState {
@@ -137,7 +137,6 @@ mod test {
     #[test]
     fn test_waiter1() {
         use async_std::task;
-        use std::time::Duration;
         use super::*;
         task::block_on(async {
             let waiter = Arc::new(CallbackWaiter::new());
