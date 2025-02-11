@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use std::future::Future;
 use std::hash::Hash;
 use std::sync::Mutex;
@@ -9,6 +10,20 @@ pub enum WaiterError {
     AlreadyExist,
     Timeout,
     NoWaiter,
+}
+
+impl Display for WaiterError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WaiterError::AlreadyExist => write!(f, "AlreadyExist"),
+            WaiterError::Timeout => write!(f, "Timeout"),
+            WaiterError::NoWaiter => write!(f, "NoWaiter"),
+        }
+    }
+}
+
+impl std::error::Error for WaiterError {
+
 }
 
 struct CallbackWaiterState<K, R> {

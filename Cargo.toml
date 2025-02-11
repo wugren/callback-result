@@ -1,6 +1,6 @@
 [package]
 name = "callback-result"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 license = "MIT"
 license-file = "LICENSE"
@@ -11,4 +11,4 @@ description = "Assists in converting the callback function's method of obtaining
 
 [dependencies]
 notify-future = "0.1.4"
-async-std = "1.12.0"
+async-std = "1.13.0"
