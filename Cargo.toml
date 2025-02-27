@@ -1,6 +1,6 @@
 [package]
 name = "callback-result"
-version = "0.1.4"
+version = "0.2.1"
 edition = "2021"
 license = "MIT"
 license-file = "LICENSE"
@@ -10,5 +10,5 @@ description = "Assists in converting the callback function's method of obtaining
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-notify-future = "0.1.4"
+notify-future = "0.2.2"
 async-std = "1.13.0"
