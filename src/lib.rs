@@ -29,11 +29,11 @@ impl std::error::Error for WaiterError {
 pub type WaiterResult<T> = Result<T, WaiterError>;
 
 pub struct ResultFuture<'a, R> {
-    future: Pin<Box<dyn Future<Output = Result<R, WaiterError>> + 'a>>,
+    future: Pin<Box<dyn Future<Output = Result<R, WaiterError>> + 'a + Send>>,
 }
 
 impl <'a, R> ResultFuture<'a, R> {
-    pub fn new(future: Pin<Box<dyn Future<Output = Result<R, WaiterError>> + 'a>>) -> Self {
+    pub fn new(future: Pin<Box<dyn Future<Output = Result<R, WaiterError>> + 'a + Send>>) -> Self {
         Self {
             future,
         }
@@ -56,7 +56,7 @@ pub struct CallbackWaiter<K, R> {
     state: Mutex<CallbackWaiterState<K, R>>,
 }
 
-impl <K: Hash + Eq + Clone + 'static, R: 'static> CallbackWaiter<K, R> {
+impl <K: Hash + Eq + Clone + 'static + Send, R: 'static + Send> CallbackWaiter<K, R> {
     pub fn new() -> Self {
         Self {
             state: Mutex::new(CallbackWaiterState {
@@ -166,7 +166,7 @@ pub struct SingleCallbackWaiter<R> {
     state: Mutex<SingleCallbackWaiterState<R>>,
 }
 
-impl <R: 'static> SingleCallbackWaiter<R> {
+impl <R: 'static + Send> SingleCallbackWaiter<R> {
     pub fn new() -> Self {
         Self {
             state: Mutex::new(SingleCallbackWaiterState {
