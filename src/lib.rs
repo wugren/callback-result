@@ -69,10 +69,14 @@ impl <K: Hash + Eq + Clone + 'static + Send, R: 'static + Send> CallbackWaiter<K
     pub fn create_result_future(&self, callback_id: K) -> WaiterResult<ResultFuture<R>> {
         let waiter = {
             let mut state = self.state.lock().unwrap();
-            if state.result_notifies.contains_key(&callback_id) {
-                return Err(WaiterError::AlreadyExist);
+            let notifies = state.result_notifies.get(&callback_id);
+            if let Some(notifies) = notifies {
+                if let Some(notifies) = notifies {
+                    if!notifies.is_canceled() {
+                        return Err(WaiterError::AlreadyExist);
+                    }
+                }
             }
-
             if let Some(result) = state.result_cache.get_mut(&callback_id) {
                 if result.len() > 0 {
                     let ret = result.remove(0);
@@ -100,8 +104,13 @@ impl <K: Hash + Eq + Clone + 'static + Send, R: 'static + Send> CallbackWaiter<K
     pub fn create_timeout_result_future(&self, callback_id: K, timeout: std::time::Duration) -> WaiterResult<ResultFuture<R>> {
         let waiter = {
             let mut state = self.state.lock().unwrap();
-            if state.result_notifies.contains_key(&callback_id) {
-                return Err(WaiterError::AlreadyExist);
+            let notifies = state.result_notifies.get(&callback_id);
+            if let Some(notifies) = notifies {
+                if let Some(notifies) = notifies {
+                    if!notifies.is_canceled() {
+                        return Err(WaiterError::AlreadyExist);
+                    }
+                }
             }
 
             if let Some(result) = state.result_cache.get_mut(&callback_id) {
@@ -134,8 +143,10 @@ impl <K: Hash + Eq + Clone + 'static + Send, R: 'static + Send> CallbackWaiter<K
         let mut state = self.state.lock().unwrap();
         if let Some(future) = state.result_notifies.get_mut(&callback_id) {
             if let Some(future) = future.take() {
-                future.notify(result);
-                return Ok(());
+                if !future.is_canceled() {
+                    future.notify(result);
+                    return Ok(());
+                }
             }
         }
         Err(WaiterError::NoWaiter)
@@ -145,8 +156,10 @@ impl <K: Hash + Eq + Clone + 'static + Send, R: 'static + Send> CallbackWaiter<K
         let mut state = self.state.lock().unwrap();
         if let Some(future) = state.result_notifies.get_mut(&callback_id) {
             if let Some(future) = future.take() {
-                future.notify(result);
-                return;
+                if !future.is_canceled() {
+                    future.notify(result);
+                    return;
+                }
             }
         }
         if let Some(cache) = state.result_cache.get_mut(&callback_id) {
@@ -179,8 +192,12 @@ impl <R: 'static + Send> SingleCallbackWaiter<R> {
     pub fn create_result_future(&self) -> WaiterResult<ResultFuture<R>> {
         let waiter = {
             let mut state = self.state.lock().unwrap();
-            if state.result_notify.is_some() {
-                return Err(WaiterError::AlreadyExist);
+            if let Some(notify) = state.result_notify.as_ref() {
+                if let Some(notify) = notify {
+                    if !notify.is_canceled() {
+                        return Err(WaiterError::AlreadyExist);
+                    }
+                }
             }
 
             if state.result_cache.len() > 0 {
@@ -206,8 +223,12 @@ impl <R: 'static + Send> SingleCallbackWaiter<R> {
     pub fn create_timeout_result_future(&self, timeout: std::time::Duration) -> WaiterResult<ResultFuture<R>> {
         let waiter = {
             let mut state = self.state.lock().unwrap();
-            if state.result_notify.is_some() {
-                return Err(WaiterError::AlreadyExist);
+            if let Some(notify) = state.result_notify.as_ref() {
+                if let Some(notify) = notify {
+                    if !notify.is_canceled() {
+                        return Err(WaiterError::AlreadyExist);
+                    }
+                }
             }
 
             if state.result_cache.len() > 0 {
@@ -240,8 +261,10 @@ impl <R: 'static + Send> SingleCallbackWaiter<R> {
         let mut state = self.state.lock().unwrap();
         if let Some(future) = state.result_notify.as_mut() {
             if let Some(future) = future.take() {
-                future.notify(result);
-                return Ok(());
+                if !future.is_canceled() {
+                    future.notify(result);
+                    return Ok(());
+                }
             }
         }
         Err(WaiterError::NoWaiter)
@@ -251,8 +274,10 @@ impl <R: 'static + Send> SingleCallbackWaiter<R> {
         let mut state = self.state.lock().unwrap();
         if let Some(future) = state.result_notify.as_mut() {
             if let Some(future) = future.take() {
-                future.notify(result);
-                return;
+                if !future.is_canceled() {
+                    future.notify(result);
+                    return;
+                }
             }
         }
         state.result_cache.push(result);
@@ -271,6 +296,7 @@ mod test {
             let waiter = Arc::new(CallbackWaiter::new());
             let callback_id = 1;
             let result_future = waiter.create_result_future(callback_id).unwrap();
+            assert!(waiter.create_result_future(callback_id).is_err());
             let tmp = waiter.clone();
             async_std::task::spawn(async move {
                 async_std::task::sleep(Duration::from_millis(1000)).await;
@@ -357,6 +383,7 @@ mod test {
                 assert!(ret.is_err());
             }).await;
             let result_future = waiter.create_timeout_result_future(callback_id, Duration::from_secs(2)).unwrap();
+            assert!(waiter.create_timeout_result_future(callback_id, Duration::from_secs(2)).is_err());
             match result_future.await {
                 Ok(_) => {}
                 Err(e) => {
@@ -374,6 +401,7 @@ mod test {
         task::block_on(async {
             let waiter = Arc::new(SingleCallbackWaiter::new());
             let result_future = waiter.create_result_future().unwrap();
+            assert!(waiter.create_result_future().is_err());
             let tmp = waiter.clone();
             async_std::task::spawn(async move {
                 async_std::task::sleep(Duration::from_millis(1000)).await;
@@ -409,6 +437,7 @@ mod test {
         task::block_on(async {
             let waiter = Arc::new(SingleCallbackWaiter::new());
             let result_future = waiter.create_timeout_result_future(Duration::from_secs(2)).unwrap();
+            assert!(waiter.create_timeout_result_future(Duration::from_secs(2)).is_err());
             let tmp = waiter.clone();
             async_std::task::spawn(async move {
                 async_std::task::sleep(Duration::from_millis(1000)).await;
